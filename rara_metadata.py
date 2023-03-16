@@ -156,7 +156,7 @@ class Harvester:
             f.write(self.write_start_of_string())
             f.write("<ListRecords>")
 
-            for entry in tqdm(ListRecords):
+            for entry in ListRecords:
                 entry_as_xml_tree = ET(entry)
                 entry_as_string = etree.tostring(entry_as_xml_tree,
                                                 encoding="utf8",
