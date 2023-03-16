@@ -1,8 +1,7 @@
-import json
+import os
 from lxml import etree
 from lxml.etree import ElementTree as ET
 import requests
-from io import StringIO
 from tqdm import tqdm
 
 
@@ -120,7 +119,7 @@ class Harvester:
 
         progress_bar.close()
 
-        return all_records
+        return all_records[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
     
 
     def write_start_of_string(self):
@@ -131,11 +130,13 @@ class Harvester:
 
         xml_string += etree.tostring(self.metadata["responseDate"],
                                      encoding="utf8",
-                                     pretty_print=True).decode()
+                                     pretty_print=True,
+                                     ).decode()
         
         xml_string += etree.tostring(self.metadata["request"],
                                      encoding="utf8",
-                                     pretty_print=True).decode()
+                                     pretty_print=True,
+                                     ).decode()
                 
         return xml_string
     
@@ -145,26 +146,26 @@ class Harvester:
         """Kirjutab kokku kogutud kirjed üheks XML failiks, mis näeb välja selline,
         nagu oleks esimese päringuga kõik kirjed korraga kätte saadud."""
 
-        # sõne algus
-        xml_string = self.write_start_of_string()
-        xml_string += "<ListRecords>"
+        if os.path.exists(fpath):
+            path, extension = fpath.rsplit(".", 1)
+            fpath = path + "_NEW." + extension
+            print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{new_fpath}'""")
 
-        # parsib kõik kirjed läbi, teeb nad sõnedeks ja liidab algusele
-        for entry in tqdm(ListRecords):
-            entry_as_xml_tree = ET(entry)
-            entry_as_string = etree.tostring(entry_as_xml_tree, encoding="utf8", pretty_print=True).decode()
-            xml_string += entry_as_string
+        with open(fpath, "a", encoding="utf8") as f:
+            
+            f.write(self.write_start_of_string())
+            f.write("<ListRecords>")
 
-        # sõne sulgemine
-        xml_string += "</ListRecords>"
-        xml_string += "</OAI-PMH>"
+            for entry in tqdm(ListRecords):
+                entry_as_xml_tree = ET(entry)
+                entry_as_string = etree.tostring(entry_as_xml_tree,
+                                                encoding="utf8",
+                                                pretty_print=True,
+                                                ).decode()
+                f.write(entry_as_string)
 
-        # salvestamine
-        if fpath:
-            with open(fpath, "w", encoding="utf8") as f:
-                f.write(xml_string)
-        else:
-            return xml_string
+            f.write("</ListRecords>")
+            f.write("</OAI-PMH>")
 
 
     def harvest(self, fpath):
