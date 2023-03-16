@@ -35,8 +35,12 @@ class Harvester:
         
     def set_collection(self, collection_name):
 
-        self.current_collection = collection_name
-        self.current_collection_URL = self.collections[self.current_collection]
+        try:       
+            self.current_collection_URL = self.collections[collection_name]
+            self.current_collection = collection_name
+        except KeyError:
+            print("Invalid collection name. Valid names are:")
+            print(list(self.collections.keys())) 
 
 
     def update_cursor(self, token, step=250):
@@ -75,7 +79,11 @@ class Harvester:
 
             # esmase päringu puhul otsib üles tokeni ja salvetab päringu metaandmed,
             # et neid hiljem lõpliku faili koostamisel kasutada
-            resumptionToken = root.find("./{*}ListRecords/{*}resumptionToken").text
+
+            try:
+                resumptionToken = root.find("./{*}ListRecords/{*}resumptionToken").text
+            except AttributeError:
+                resumptionToken = None
 
             self.metadata = {"responseDate": responseDate,
                              "request": request,
@@ -101,8 +109,11 @@ class Harvester:
 
         # tokenist saame teada kursori sammu (mitu kirjet korraga antakse) ja andmestiku kogusuuruse
         token = self.metadata["resumptionToken"]
-        cursor_step, collection_size = [int(el) for el in token.split(":")[3:5]]
-        
+
+        if token is not None:
+            cursor_step, collection_size = [int(el) for el in token.split(":")[3:5]]
+        else:
+            collection_size = len(ListRecords)
         print(f"Fetched {len(ListRecords)} records in first batch from collection with size {collection_size}.\nRequesting rest of the collection...")
 
         progress_bar = tqdm(total=collection_size)
@@ -149,7 +160,7 @@ class Harvester:
         if os.path.exists(fpath):
             path, extension = fpath.rsplit(".", 1)
             fpath = path + "_NEW." + extension
-            print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{new_fpath}'""")
+            print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{fpath}'""")
 
         with open(fpath, "a", encoding="utf8") as f:
             
