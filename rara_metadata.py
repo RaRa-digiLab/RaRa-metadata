@@ -3,6 +3,7 @@ from lxml import etree
 from lxml.etree import ElementTree as ET
 import requests
 from tqdm import tqdm
+import pandas as pd
 
 
 class Harvester:
@@ -187,6 +188,76 @@ class Harvester:
         self.write_records(ListRecords, fpath)
         print("Finished!\n")
 
+
+def get_namespaces():
+    return {"xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "oai": "http://www.openarchives.org/OAI/2.0/",
+            "marc": "http://www.loc.gov/MARC21/slim",
+            "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+            "edm": "http://www.europeana.eu/schemas/edm/",
+            "dc" : "http://purl.org/dc/elements/1.1/"}
+
+
+def register_namespaces():
+    for key, value in get_namespaces().items():
+        etree.register_namespace(key, value)
+
+
+def detect_format(tree):
+    ns = get_namespaces()
+
+    if tree.find("./oai:ListRecords/oai:record/oai:metadata/marc:*", namespaces=ns) is not None:
+        return "marc"
+    elif tree.find("./oai:ListRecords/oai:record/oai:metadata/rdf:RDF/edm:*", namespaces=ns) is not None:
+        return "edm"
+    else:
+        raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
+
+
+
+def extract_edm_metadata(record):
+
+    register_namespaces()
+
+    fields = record.iterfind("./oai:metadata/rdf:RDF/edm:ProvidedCHO/dc:*", namespaces=get_namespaces())
+    record_metadata = {}
+
+    for f in fields:
+        tag = f.tag.rsplit("}", 1)[1]
+        lang = f.attrib.get("{http://www.w3.org/XML/1998/namespace}lang")
+        text = f.text
+
+        if tag == "identifier":
+            if ":isbn:" in text:
+                tag = "isbn"
+            elif "www.ester.ee" in text:
+                tag = "ester_url"
+            elif "www.digar.ee" in text:
+                tag = "digar_url"
+
+        if lang is not None:
+            tag = tag + "_" + lang
+
+        record_metadata[tag] = text
+
+    return record_metadata
+
+
+def edm_to_dataframe(fpath):
+        
+    register_namespaces()
+
+    tree = etree.parse(fpath)
+    root = tree.getroot()
+    records = root.findall("./oai:ListRecords/oai:record", namespaces=get_namespaces())
+
+    records_metadata = (extract_edm_metadata(record) for record in records)
+
+    return pd.DataFrame.from_records(records_metadata)
+
+        
+
+        
 
 
 
