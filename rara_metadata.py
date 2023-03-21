@@ -204,6 +204,9 @@ def register_namespaces():
 
 
 def detect_format(tree):
+
+    """Detects whether a parsed XML tree is in XML or EDM format"""
+
     ns = get_namespaces()
 
     if tree.find("./oai:ListRecords/oai:record/oai:metadata/marc:*", namespaces=ns) is not None:
@@ -216,6 +219,8 @@ def detect_format(tree):
 
 
 def extract_edm_metadata(record):
+
+    """Converts a single EDM record to a dictionary"""
 
     register_namespaces()
 
@@ -243,11 +248,19 @@ def extract_edm_metadata(record):
     return record_metadata
 
 
-def edm_to_dataframe(fpath):
-        
+def edm_to_dataframe(obj):
+
+    """Parses the records of an EDM tree and converts them to a Pandas dataframe.
+    Input: filepath or lxml.etree._ElementTree object
+    Output: pd.DataFrame"""
+
+    if type(obj) == str:
+        tree = etree.parse(obj)
+    elif type(obj) == etree._ElementTree:
+        pass
+
     register_namespaces()
 
-    tree = etree.parse(fpath)
     root = tree.getroot()
     records = root.findall("./oai:ListRecords/oai:record", namespaces=get_namespaces())
 
