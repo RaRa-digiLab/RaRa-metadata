@@ -153,17 +153,17 @@ class Harvester:
         return xml_string
     
 
-    def write_records(self, ListRecords: list, fpath=None):
+    def write_records(self, ListRecords: list, savepath=None):
 
         """Kirjutab kokku kogutud kirjed üheks XML failiks, mis näeb välja selline,
         nagu oleks esimese päringuga kõik kirjed korraga kätte saadud."""
 
-        if os.path.exists(fpath):
-            path, extension = fpath.rsplit(".", 1)
-            fpath = path + "_NEW." + extension
-            print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{fpath}'""")
+        if os.path.exists(savepath):
+            path, extension = savepath.rsplit(".", 1)
+            savepath = path + "_NEW." + extension
+            print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{savepath}'""")
 
-        with open(fpath, "a", encoding="utf8") as f:
+        with open(savepath, "a", encoding="utf8") as f:
             
             f.write(self.write_start_of_string())
             f.write("<ListRecords>")
@@ -180,12 +180,12 @@ class Harvester:
             f.write("</OAI-PMH>")
 
 
-    def harvest(self, fpath):
+    def harvest(self, savepath):
 
         print(f"Collecting {self.current_collection}")
         ListRecords = self.get_collection()
         print("Writing file")
-        self.write_records(ListRecords, fpath)
+        self.write_records(ListRecords, savepath)
         print("Finished!\n")
 
 
