@@ -248,16 +248,21 @@ def extract_edm_metadata(record):
     return record_metadata
 
 
-def edm_to_dataframe(obj):
+def edm_to_dataframe(source):
 
     """Parses the records of an EDM tree and converts them to a Pandas dataframe.
     Input: filepath or lxml.etree._ElementTree object
     Output: pd.DataFrame"""
 
-    if type(obj) == str:
-        tree = etree.parse(obj)
-    elif type(obj) == etree._ElementTree:
+    if type(source) == str:
+        if source.lower().endswith(".xml"):
+            tree = etree.parse(source)
+        else:
+            raise ValueError("Invalid path to file. Must be in .xml format.")
+    elif type(source) == etree._ElementTree:
         pass
+    else:
+        raise ValueError("Source must be either path to XML file or lxml.etree._ElementTree")
 
     register_namespaces()
 
