@@ -205,9 +205,12 @@ def extract_year(date):
         if re.match(pattern, date):
             date = re.findall("\d{4}", date)[0]
 
-    try:
-        return int(date)
-    except ValueError:
+    if len(date) == 4:
+        try:
+            return int(date)
+        except ValueError:
+            return None
+    else:
         return None
     
 
