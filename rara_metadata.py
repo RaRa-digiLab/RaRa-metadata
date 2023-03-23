@@ -290,11 +290,3 @@ def edm_to_dataframe(source):
     records_metadata = (extract_edm_metadata(record) for record in records)
 
     return pd.DataFrame.from_records(records_metadata).convert_dtypes()
-
-        
-
-        
-
-
-
-
