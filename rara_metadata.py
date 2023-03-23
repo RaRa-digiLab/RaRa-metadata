@@ -4,12 +4,12 @@ from lxml.etree import ElementTree as ET
 import requests
 from tqdm import tqdm
 import pandas as pd
+import re
 
 
 class Harvester:
 
     def __init__(self):
-
         self.OAI_root_tag = """<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">"""
 
         self.ns = {"oai": "http://www.openarchives.org/OAI/2.0/",
@@ -35,7 +35,6 @@ class Harvester:
             }
         
     def set_collection(self, collection_name):
-
         try:       
             self.current_collection_URL = self.collections[collection_name]
             self.current_collection = collection_name
@@ -45,7 +44,6 @@ class Harvester:
 
 
     def update_cursor(self, token, step=250):
-
         """Eraldab tokenist kursori ehk selle, mitmenda kirje juurde päring jäi, ning konstrueerib selle abil uue tokeni"""
 
         token_id, collection, metadata_prefix, cursor, collection_size = token.strip(":").split(":")
@@ -58,7 +56,6 @@ class Harvester:
 
 
     def request_records(self, token):
-
         """Keskne funktsioon serverist päringu tegemiseks.
         On loodud nii esmase päringu kui ka tokeniga järelpäringu tegemiseks."""
 
@@ -77,21 +74,16 @@ class Harvester:
         responseDate, request, ListRecords = root.getchildren()
 
         if token == "first request":
-
             # esmase päringu puhul otsib üles tokeni ja salvetab päringu metaandmed,
             # et neid hiljem lõpliku faili koostamisel kasutada
-
             try:
                 resumptionToken = root.find("./{*}ListRecords/{*}resumptionToken").text
             except AttributeError:
                 resumptionToken = None
-
             self.metadata = {"responseDate": responseDate,
                              "request": request,
                             "resumptionToken": resumptionToken}
-            
             return ListRecords
-        
         else:
             # järelpäringu puhul on vaja ainult kirjeid endid
             return ListRecords
@@ -118,56 +110,43 @@ class Harvester:
         print(f"Fetched {len(ListRecords)} records in first batch from collection with size {collection_size}.\nRequesting rest of the collection...")
 
         progress_bar = tqdm(total=collection_size)
-    
         while token is not None:
-
             # järelpäring
             ListRecords = self.request_records(token=token)
             all_records += ListRecords
-
             # tokeni uuendamine
             token = self.update_cursor(token, step=cursor_step)
             progress_bar.update(cursor_step)
-
         progress_bar.close()
 
         return all_records[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
     
 
     def write_start_of_string(self):
-
         """Taastab algse päringu alguse, kus on kirjas päringu metaandmed, ning paigutab sõne algusse OAI juure."""
-
         xml_string = self.OAI_root_tag
-
         xml_string += etree.tostring(self.metadata["responseDate"],
                                      encoding="utf8",
                                      pretty_print=True,
                                      ).decode()
-        
         xml_string += etree.tostring(self.metadata["request"],
                                      encoding="utf8",
                                      pretty_print=True,
-                                     ).decode()
-                
+                                     ).decode()       
         return xml_string
     
 
     def write_records(self, ListRecords: list, savepath=None):
-
         """Kirjutab kokku kogutud kirjed üheks XML failiks, mis näeb välja selline,
         nagu oleks esimese päringuga kõik kirjed korraga kätte saadud."""
-
         if os.path.exists(savepath):
             path, extension = savepath.rsplit(".", 1)
             savepath = path + "_NEW." + extension
             print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{savepath}'""")
 
-        with open(savepath, "a", encoding="utf8") as f:
-            
+        with open(savepath, "a", encoding="utf8") as f: 
             f.write(self.write_start_of_string())
             f.write("<ListRecords>")
-
             for entry in ListRecords:
                 entry_as_xml_tree = ET(entry)
                 entry_as_string = etree.tostring(entry_as_xml_tree,
@@ -175,13 +154,11 @@ class Harvester:
                                                 pretty_print=True,
                                                 ).decode()
                 f.write(entry_as_string)
-
             f.write("</ListRecords>")
             f.write("</OAI-PMH>")
 
 
     def harvest(self, savepath):
-
         print(f"Collecting {self.current_collection}")
         ListRecords = self.get_collection()
         print("Writing file")
@@ -204,9 +181,7 @@ def register_namespaces():
 
 
 def detect_format(tree):
-
     """Detects whether a parsed XML tree is in XML or EDM format"""
-
     ns = get_namespaces()
 
     if tree.find("./oai:ListRecords/oai:record/oai:metadata/marc:*", namespaces=ns) is not None:
@@ -217,12 +192,27 @@ def detect_format(tree):
         raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
 
 
+def extract_year(date):
+    if len(date) == 4 & date.isnumeric():
+        return int(date)
 
-def extract_edm_metadata(record):
+    patterns = [re.compile("(^([\D\s]+)(\d{4})([\D\s]*)$)|(^([\D\s]*)(\d{4})([\D\s]+)$)"),
+                re.compile("^\d{4}-\d{2}-\d{2}$"),
+                re.compile("^\d{2}-\d{2}-\d{4}$"),
+                re.compile("^\d{4}-\d{2}$")]
 
+    for pattern in patterns:
+        if re.match(pattern, date):
+            date = re.findall("\d{4}", date)[0]
+
+    try:
+        return int(date)
+    except ValueError:
+        return None
+    
+
+def extract_edm_metadata(record, sep="; "):
     """Converts a single EDM record to a dictionary"""
-
-    register_namespaces()
 
     fields = record.iterfind("./oai:metadata/rdf:RDF/edm:ProvidedCHO/dc:*", namespaces=get_namespaces())
     record_metadata = {}
@@ -239,20 +229,25 @@ def extract_edm_metadata(record):
                 tag = "ester_url"
             elif "www.digar.ee" in text:
                 tag = "digar_url"
+            else:
+                tag = "other_identifier"
 
+        if tag == "date":
+            record_metadata["year"] = extract_year(text)        
         if lang is not None:
-            tag = tag + "_" + lang
-
-        record_metadata[tag] = text
+            tag = tag + "_" + lang 
+        if tag in record_metadata.keys():
+            record_metadata[tag] += sep + text
+        else:
+            record_metadata[tag] = text
 
     return record_metadata
 
 
-def edm_to_dataframe(source):
-
-    """Parses the records of an EDM tree and converts them to a Pandas dataframe.
+def get_records(source):
+    """Parses the records of an EDM tree and returns the record objects.
     Input: filepath or lxml.etree._ElementTree object
-    Output: pd.DataFrame"""
+    Output: list"""
 
     if type(source) == str:
         if source.lower().endswith(".xml"):
@@ -260,7 +255,7 @@ def edm_to_dataframe(source):
         else:
             raise ValueError("Invalid path to file. Must be in .xml format.")
     elif type(source) == etree._ElementTree:
-        pass
+        tree = source
     else:
         raise ValueError("Source must be either path to XML file or lxml.etree._ElementTree")
 
@@ -269,9 +264,32 @@ def edm_to_dataframe(source):
     root = tree.getroot()
     records = root.findall("./oai:ListRecords/oai:record", namespaces=get_namespaces())
 
+    return records
+
+
+def edm_to_json(source):
+    """Parses the records of an EDM tree and returns the records as dictionary.
+    Input: filepath or lxml.etree._ElementTree object
+    Output: dict"""
+
+    records = get_records(source)
+    records_as_json = {"records": []}
+
+    for record in (extract_edm_metadata(record) for record in records):
+        records_as_json["records"].append(record)
+
+    return records_as_json
+
+
+def edm_to_dataframe(source):
+    """Parses the records of an EDM tree and returns the records as a dataframe.
+    Input: filepath or lxml.etree._ElementTree object
+    Output: pandas.DataFrame"""
+
+    records = get_records(source)
     records_metadata = (extract_edm_metadata(record) for record in records)
 
-    return pd.DataFrame.from_records(records_metadata)
+    return pd.DataFrame.from_records(records_metadata).convert_dtypes()
 
         
 
