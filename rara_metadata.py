@@ -193,8 +193,12 @@ def detect_format(tree):
 
 
 def extract_year(date):
+    
     if len(date) == 4 & date.isnumeric():
-        return int(date)
+        if 1500 < int(date) > 2024:
+            return int(date)
+        else:
+            return None
 
     patterns = [re.compile("(^([\D\s]+)(\d{4})([\D\s]*)$)|(^([\D\s]*)(\d{4})([\D\s]+)$)"),
                 re.compile("^\d{4}-\d{2}-\d{2}$"),
@@ -207,7 +211,9 @@ def extract_year(date):
 
     if len(date) == 4:
         try:
-            return int(date)
+            date = int(date)
+            if 1500 < date > 2024:
+                return date
         except ValueError:
             return None
     else:
