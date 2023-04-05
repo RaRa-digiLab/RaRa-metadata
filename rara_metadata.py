@@ -105,14 +105,14 @@ class Harvester:
             collection_size = len(ListRecords)
         print(f"Fetched {len(ListRecords)} records in first batch from collection with size {collection_size}.\nRequesting rest of the collection...")
 
-        progress_bar = tqdm(total=collection_size)
+        progress_bar = tqdm(total=collection_size, initial=cursor_step)
         while token is not None:
             # järelpäring
             ListRecords = self.request_records(token=token)
             all_records += ListRecords[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
             # tokeni uuendamine
             token = self.update_cursor(token, step=cursor_step)
-            progress_bar.update(cursor_step)
+            progress_bar.update(len(ListRecords)-1)
         progress_bar.close()
 
         return all_records
@@ -181,6 +181,7 @@ class Harvester:
         if format == "xml":
             print("Writing file")
             self.write_records(ListRecords, savepath)
+            print("Finished")
 
         elif format == "json":
             records_as_json = {"records": []}
