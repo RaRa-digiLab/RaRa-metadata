@@ -4,6 +4,7 @@ from lxml.etree import ElementTree as ET
 import requests
 from tqdm import tqdm
 import pandas as pd
+import json
 import re
 
 
@@ -43,9 +44,8 @@ class Harvester:
             print(list(self.collections.keys())) 
 
 
-    def update_cursor(self, token, step=250):
+    def update_cursor(self, token, step):
         """Eraldab tokenist kursori ehk selle, mitmenda kirje juurde päring jäi, ning konstrueerib selle abil uue tokeni"""
-
         token_id, collection, metadata_prefix, cursor, collection_size = token.strip(":").split(":")
         new_cursor = str(int(cursor) + step)
 
@@ -58,7 +58,6 @@ class Harvester:
     def request_records(self, token):
         """Keskne funktsioon serverist päringu tegemiseks.
         On loodud nii esmase päringu kui ka tokeniga järelpäringu tegemiseks."""
-
         # otsustab, kas tegu on esmase või järelpäringuga
         if token == "first request":
             URL = self.current_collection_URL
@@ -90,15 +89,12 @@ class Harvester:
         
 
     def get_collection(self):
-
         """Funktsioon, mis teeb soovitud andmestikust kõigepealt esmase päringu ning kasutab siis tokenit järelpäringute tegemiseks,
         kuni terve andmestik on alla laetud. Tagastab kõik kirjed ja päringu metaandmed."""
-
         all_records = []
-
         # esmane päring
         ListRecords = self.request_records(token="first request")
-        all_records += ListRecords
+        all_records += ListRecords[:-1]
 
         # tokenist saame teada kursori sammu (mitu kirjet korraga antakse) ja andmestiku kogusuuruse
         token = self.metadata["resumptionToken"]
@@ -113,13 +109,13 @@ class Harvester:
         while token is not None:
             # järelpäring
             ListRecords = self.request_records(token=token)
-            all_records += ListRecords
+            all_records += ListRecords[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
             # tokeni uuendamine
             token = self.update_cursor(token, step=cursor_step)
             progress_bar.update(cursor_step)
         progress_bar.close()
 
-        return all_records[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
+        return all_records
     
 
     def write_start_of_string(self):
@@ -158,12 +154,44 @@ class Harvester:
             f.write("</OAI-PMH>")
 
 
-    def harvest(self, savepath):
+    def harvest(self, format, savepath=None):
+
+        """
+        Harvests the complete collection and either saves it in the original OAI-PMH format or returns either a serializable dict or a pandas DataFrame.
+        
+        Parameters
+        ----------
+        format : string
+            How you would like to receive the collection. Possible values are the following:
+            - "xml" : saves the collection in the original OAI-PMH format. Parameter savepath required.
+            - "json" : returns the collection as a serializable dictionary.
+            - "dataframe" : returns the collection as a pandas DataFrame object.
+        savepath : string (optional)
+            Savepath is needed only if "format" is set to "xml".
+        """
+
+        if format not in ["xml", "json", "dataframe"]:
+            raise ValueError("Invalid format specification. Possible values are: 'xml', 'json', 'dataframe'")
+        if format == "xml" and savepath is None:
+            raise ValueError("Harvesting as xml requires a valid savepath")
+
         print(f"Collecting {self.current_collection}")
         ListRecords = self.get_collection()
-        print("Writing file")
-        self.write_records(ListRecords, savepath)
-        print("Finished!\n")
+
+        if format == "xml":
+            print("Writing file")
+            self.write_records(ListRecords, savepath)
+
+        elif format == "json":
+            records_as_json = {"records": []}
+            for record in (extract_edm_metadata(record) for record in ListRecords):
+                records_as_json["records"].append(record)
+            return records_as_json
+        
+        elif format ==  "dataframe":
+            records_metadata = (extract_edm_metadata(record) for record in ListRecords)
+            records_as_df = pd.DataFrame.from_records(records_metadata).convert_dtypes()
+            return records_as_df
 
 
 def get_namespaces():
