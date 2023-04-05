@@ -160,14 +160,14 @@ class Harvester:
         ----------
         format : string
             How you would like to receive the collection. Possible values are the following:
-            - "xml" : saves the collection in the original OAI-PMH format. Parameter savepath required.
+            - "oai-pmh" : saves the collection in the original OAI-PMH XML format. Parameter savepath required.
             - "json" : returns the collection as a serializable dictionary.
             - "dataframe" : returns the collection as a pandas DataFrame object.
         savepath : string (optional)
             Savepath is needed only if "format" is set to "xml".
         """
 
-        if format not in ["xml", "json", "dataframe"]:
+        if format not in ["oai-pmh", "json", "dataframe"]:
             raise ValueError("Invalid format specification. Possible values are: 'xml', 'json', 'dataframe'")
         if format == "xml" and savepath is None:
             raise ValueError("Harvesting as xml requires a valid savepath")
@@ -175,7 +175,7 @@ class Harvester:
         print(f"Collecting {self.current_collection}")
         ListRecords = self.get_collection()
 
-        if format == "xml":
+        if format == "oai-pmh":
             print("Writing file")
             self.write_records(ListRecords, savepath)
             print("Finished")
