@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 from lxml import etree
 from lxml.etree import ElementTree as ET
-from conversion import extract_edm_metadata
+from conversion import extract_edm_metadata, detect_record_format
 
 
 class Harvester:
@@ -181,12 +181,20 @@ class Harvester:
             print("Finished")
 
         elif format == "json":
-            records_as_json = {"records": []}
-            for record in (extract_edm_metadata(record) for record in ListRecords):
-                records_as_json["records"].append(record)
-            return records_as_json
+            if detect_record_format(ListRecords[0]) == "edm":
+                records_as_json = {"records": []}
+                for record in (extract_edm_metadata(record) for record in ListRecords):
+                    records_as_json["records"].append(record)
+                return records_as_json
+            elif detect_record_format(ListRecords[0]) == "marc":
+                print("Sorry, this collection is in MARC format and can currently only be returned as an XML file. Use format='oai-pmh'.")
+                return None
         
         elif format ==  "dataframe":
-            records_metadata = (extract_edm_metadata(record) for record in ListRecords)
-            records_as_df = pd.DataFrame.from_records(records_metadata).convert_dtypes()
-            return records_as_df
+            if detect_record_format(ListRecords[0]) == "edm":
+                records_metadata = (extract_edm_metadata(record) for record in ListRecords)
+                records_as_df = pd.DataFrame.from_records(records_metadata).convert_dtypes()
+                return records_as_df
+            elif detect_record_format(ListRecords[0]) == "marc":
+                print("Sorry, this collection is in MARC format and can currently only be returned as an XML file. Use format='oai-pmh'.")
+                return None

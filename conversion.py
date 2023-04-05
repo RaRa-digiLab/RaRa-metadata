@@ -18,7 +18,7 @@ def register_namespaces():
 
 
 def detect_format(tree):
-    """Detects whether a parsed XML tree is in XML or EDM format"""
+    """Detects whether a parsed XML tree is in OAI-PMH or EDM format"""
     ns = get_namespaces()
 
     if tree.find("./oai:ListRecords/oai:record/oai:metadata/marc:*", namespaces=ns) is not None:
@@ -29,7 +29,22 @@ def detect_format(tree):
         raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
 
 
+def detect_record_format(record):
+    """Detects whether a single record is in OAI-PMH or EDM format"""
+    ns = get_namespaces()
+
+    if record.find("./oai:metadata/marc:*", namespaces=ns) is not None:
+        return "marc"
+    elif record.find("./oai:metadata/rdf:RDF/edm:*", namespaces=ns) is not None:
+        return "edm"
+    else:
+        raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
+
+
 def extract_year(date):
+    """
+    Cleans a datetime string to find a valid year.
+    """
     
     if len(date) == 4 and date.isnumeric():
         if int(date) > 1500 and int(date) < 2024:
