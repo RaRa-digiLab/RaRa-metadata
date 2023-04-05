@@ -194,8 +194,8 @@ def detect_format(tree):
 
 def extract_year(date):
     
-    if len(date) == 4 & date.isnumeric():
-        if 1500 < int(date) > 2024:
+    if len(date) == 4 and date.isnumeric():
+        if int(date) > 1500 and int(date) < 2024:
             return int(date)
         else:
             return None
@@ -212,7 +212,7 @@ def extract_year(date):
     if len(date) == 4:
         try:
             date = int(date)
-            if 1500 < date > 2024:
+            if date > 1500 and date < 2024:
                 return date
         except ValueError:
             return None
