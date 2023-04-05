@@ -43,7 +43,9 @@ class Harvester:
 
 
     def update_cursor(self, token, step):
-        """Eraldab tokenist kursori ehk selle, mitmenda kirje juurde päring jäi, ning konstrueerib selle abil uue tokeni"""
+        """
+        Extracts the cursor from the resumptionToken
+        """
         token_id, collection, metadata_prefix, cursor, collection_size = token.strip(":").split(":")
         new_cursor = str(int(cursor) + step)
 
@@ -54,62 +56,57 @@ class Harvester:
 
 
     def request_records(self, token):
-        """Keskne funktsioon serverist päringu tegemiseks.
-        On loodud nii esmase päringu kui ka tokeniga järelpäringu tegemiseks."""
-        # otsustab, kas tegu on esmase või järelpäringuga
+        """
+        Request records of the collection from the server. Made both for initial and follow-up requests.
+        """
+        # if we don't have a resumptionToken yet, request the first batch; else use the token.
         if token == "first request":
             URL = self.current_collection_URL
         else:
             URL = f"https://data.digar.ee/repox/OAIHandler?verb=ListRecords&resumptionToken={token}"
 
-        # päring ise
         response = requests.get(URL)
-
-        # päringu tulemus serialiseeritakse XML puuks
         tree = ET(etree.fromstring(bytes(response.text, encoding="utf8")))
         root = tree.getroot()
         responseDate, request, ListRecords = root.getchildren()
 
         if token == "first request":
-            # esmase päringu puhul otsib üles tokeni ja salvetab päringu metaandmed,
-            # et neid hiljem lõpliku faili koostamisel kasutada
+            # in the case of an initial request, return both the records, resumptionToken and the request metadata
             try:
                 resumptionToken = root.find("./{*}ListRecords/{*}resumptionToken").text
             except AttributeError:
                 resumptionToken = None
+            # save the request metadata and the token as a class attribute
             self.metadata = {"responseDate": responseDate,
                              "request": request,
                             "resumptionToken": resumptionToken}
             return ListRecords
         else:
-            # järelpäringu puhul on vaja ainult kirjeid endid
+            # if we already have a resumptionToken, just get the records
             return ListRecords
         
 
     def get_collection(self):
-        """Funktsioon, mis teeb soovitud andmestikust kõigepealt esmase päringu ning kasutab siis tokenit järelpäringute tegemiseks,
-        kuni terve andmestik on alla laetud. Tagastab kõik kirjed ja päringu metaandmed."""
+        """
+        Requests the whole collection in batches using the resumptionToken. Returns all records, as well as the request metadata (header).
+        """
+        # initial request
         all_records = []
-        # esmane päring
         ListRecords = self.request_records(token="first request")
         all_records += ListRecords[:-1]
 
-        # tokenist saame teada kursori sammu (mitu kirjet korraga antakse) ja andmestiku kogusuuruse
         token = self.metadata["resumptionToken"]
-
         if token is not None:
             cursor_step, collection_size = [int(el) for el in token.split(":")[3:5]]
-        else:
-            collection_size = len(ListRecords)
+        else:   # token can be none in the case of a small collection that is returned in the first request
+            cursor_step, collection_size = 1000, len(ListRecords)
         print(f"Fetched {len(ListRecords)} records in first batch from collection with size {collection_size}.\nRequesting rest of the collection...")
 
         progress_bar = tqdm(total=collection_size, initial=cursor_step)
-        while token is not None:
-            # järelpäring
+        while token is not None: # continue requesting until there is no more resumptionToken, i.e. the end of the collection is reached
             ListRecords = self.request_records(token=token)
-            all_records += ListRecords[:-1] # (jätame viimase elemendi välja, sest see on resumptionToken)
-            # tokeni uuendamine
-            token = self.update_cursor(token, step=cursor_step)
+            all_records += ListRecords[:-1] # (leave out the last element, the resumptionToken)
+            token = self.update_cursor(token, step=cursor_step) # update the cursor
             progress_bar.update(len(ListRecords)-1)
         progress_bar.close()
 
@@ -117,7 +114,9 @@ class Harvester:
     
 
     def write_start_of_string(self):
-        """Taastab algse päringu alguse, kus on kirjas päringu metaandmed, ning paigutab sõne algusse OAI juure."""
+        """
+        Reconstructs the original header of the OAI-PMH request.
+        """
         xml_string = self.OAI_root_tag
         xml_string += etree.tostring(self.metadata["responseDate"],
                                      encoding="utf8",
@@ -131,8 +130,9 @@ class Harvester:
     
 
     def write_records(self, ListRecords: list, savepath=None):
-        """Kirjutab kokku kogutud kirjed üheks XML failiks, mis näeb välja selline,
-        nagu oleks esimese päringuga kõik kirjed korraga kätte saadud."""
+        """
+        Joins the header and the records into a full XML structure and saves it.
+        """
         if os.path.exists(savepath):
             path, extension = savepath.rsplit(".", 1)
             savepath = path + "_NEW." + extension
@@ -153,7 +153,6 @@ class Harvester:
 
 
     def harvest(self, format, savepath=None):
-
         """
         Harvests the complete collection and either saves it in the original OAI-PMH format or returns either a serializable dict or a pandas DataFrame.
         
