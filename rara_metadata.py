@@ -164,13 +164,13 @@ class Harvester:
             - "json" : returns the collection as a serializable dictionary.
             - "dataframe" : returns the collection as a pandas DataFrame object.
         savepath : string (optional)
-            Savepath is needed only if "format" is set to "xml".
+            Savepath is needed only if "format" is set to "oai-pmh".
         """
 
         if format not in ["oai-pmh", "json", "dataframe"]:
-            raise ValueError("Invalid format specification. Possible values are: 'xml', 'json', 'dataframe'")
-        if format == "xml" and savepath is None:
-            raise ValueError("Harvesting as xml requires a valid savepath")
+            raise ValueError("Invalid format specification. Possible values are: 'oai-pmh', 'json', 'dataframe'")
+        if format == "oai-pmh" and savepath is None:
+            raise ValueError("Harvesting as OAI-PMH requires a valid savepath")
 
         print(f"Collecting {self.current_collection}")
         ListRecords = self.get_collection()
