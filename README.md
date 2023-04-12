@@ -25,28 +25,19 @@ harvester.collections     # returns a dictionary with names and URLs
      ...
      
 harvester.set_collection(collection_name="DIGAR - maps collection")     # this is one of the smaller ones
-
-harvester.harvest(savepath="somefilepath.xml")     # main function - be sure to use the .xml extension
 ```
 
-#### Convert EDM to DataFrame
-The metadata files can be either in MARC21XML or EDM (Europeana Data Model) specification. For now, there is a functionality to convert the latter into DataFrame which can then be saved in a preferred format:
+#### Harvest the collection metadata
+##### pandas DataFrame
 ```
-from lxml import etree
-from rara_metadata import detect_format, edm_to_dataframe
-
-tree = etree.parse(source="somefilepath.xml")
-
-if detect_format(tree) == "edm":
-     df = edm_to_dataframe(source=tree)
-     df.to_csv("somesavepath.tsv", sep="\t", encoding="utf8", index=False)
+records_dataframe = harvester.harvest(format="dataframe")
 ```
-
-Alternatively, if you already know that the file is in EDM format, there is no need for verification:
+##### as JSON
 ```
-from lxml import etree
-from rara_metadata import detect_format, edm_to_dataframe
-
-df = edm_to_dataframe(source="somefilepath.xml)
-df.to_csv("somesavepath.tsv", sep="\t", encoding="utf8", index=False)
+records_as_json = harvester.harvest(format="json")
+```
+##### OAI-PMH (original)
+When harvesting as OAI-PMH, the records are stored directly in a file and a savepath must therefore be provided.
+```
+harvester.harvest(format="oai-pmh", savepath="somefilepath.xml")     # be sure to use the .xml extension
 ```
