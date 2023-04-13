@@ -75,6 +75,14 @@ class Harvester:
             return ListRecords
         
 
+    def detect_collection_format(self):
+        """
+        Detects the format of a collection from the first batch of records returned.
+        """
+        ListRecords = self.request_records(token="first request")
+        return detect_record_format(ListRecords[0])
+
+
     def get_collection(self):
         """
         Requests the whole collection in batches using the resumptionToken. Returns all records, as well as the request metadata (header).
@@ -160,30 +168,33 @@ class Harvester:
             raise ValueError("Invalid format specification. Possible values are: 'oai-pmh', 'json', 'dataframe'")
         if format == "oai-pmh" and savepath is None:
             raise ValueError("Harvesting as OAI-PMH requires a valid savepath")
-
+        
+        collection_format = self.detect_collection_format()
         print(f"Collecting {self.current_collection}")
-        ListRecords = self.get_collection()
 
         if format == "oai-pmh":
+            ListRecords = self.get_collection()
             print("Writing file")
             self.write_records(ListRecords, savepath)
             print("Finished")
 
         elif format == "json":
-            if detect_record_format(ListRecords[0]) == "edm":
+            if collection_format == "edm":
+                ListRecords = self.get_collection()
                 records_as_json = {"records": []}
                 for record in (extract_edm_metadata(record) for record in ListRecords):
                     records_as_json["records"].append(record)
                 return records_as_json
-            elif detect_record_format(ListRecords[0]) == "marc":
+            elif collection_format == "marc":
                 print("Sorry, this collection is in MARC format and can currently only be returned as an XML file. Use format='oai-pmh'.")
                 return None
         
         elif format ==  "dataframe":
-            if detect_record_format(ListRecords[0]) == "edm":
+            if collection_format == "edm":
+                ListRecords = self.get_collection()
                 records_metadata = (extract_edm_metadata(record) for record in ListRecords)
                 records_as_df = pd.DataFrame.from_records(records_metadata).convert_dtypes()
                 return records_as_df
-            elif detect_record_format(ListRecords[0]) == "marc":
+            elif collection_format == "marc":
                 print("Sorry, this collection is in MARC format and can currently only be returned as an XML file. Use format='oai-pmh'.")
                 return None
