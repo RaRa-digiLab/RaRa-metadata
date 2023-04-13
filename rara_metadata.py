@@ -1,4 +1,5 @@
 import os
+import json
 from tqdm import tqdm
 import requests
 import pandas as pd
@@ -17,21 +18,9 @@ class Harvester:
         for key, value in self.ns.items():
             etree.register_namespace(key, value)
 
-        self.collections = {
-                "Estonian Legal Bibliography": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=bie&metadataPrefix=marc21xml",
-                "DIGAR - books collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=book&metadataPrefix=edm",
-                "Digital Archive DIGAR": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=digar&metadataPrefix=edm",
-                "DIGAR - EODOPEN collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=eodopen&metadataPrefix=marc21xml",
-                "ERB - Estonian National Bibliography": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=erb&metadataPrefix=marc21xml",
-                "ERB - sound recordings": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=helisalvestised&metadataPrefix=marc21xml",
-                "DIGAR - journals collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=journal&metadataPrefix=edm",
-                "ERB - maps": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=kaardid&metadataPrefix=marc21xml",
-                "DIGAR - maps collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=map&metadataPrefix=edm",
-                "ERB - multimedia": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=multimeedia&metadataPrefix=marc21xml",
-                "ERB - books in foreign language": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=muukeelne&metadataPrefix=marc21xml",
-                "ERB - sheet music": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=noodid&metadataPrefix=marc21xml",
-                "Organization names": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=organization&metadataPrefix=marc21xml"
-            }
+        with open("collections.json", "r", encoding="utf8") as f:
+            self.collections = json.load(f)
+            
         
     def set_collection(self, collection_name):
         try:       
