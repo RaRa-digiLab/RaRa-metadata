@@ -79,28 +79,30 @@ def extract_edm_metadata(record, sep="; "):
     record_metadata = {}
 
     for f in fields:
-        tag = f.tag.rsplit("}", 1)[1]
-        lang = f.attrib.get("{http://www.w3.org/XML/1998/namespace}lang")
-        text = f.text
+        if f is not None:
+            tag = f.tag.rsplit("}", 1)[1]
+            lang = f.attrib.get("{http://www.w3.org/XML/1998/namespace}lang")
+            text = f.text
 
-        if tag == "identifier":
-            if ":isbn:" in text:
-                tag = "isbn"
-            elif "www.ester.ee" in text:
-                tag = "ester_url"
-            elif "www.digar.ee" in text:
-                tag = "digar_url"
-            else:
-                tag = "other_identifier"
+            if text is not None:
+                if tag == "identifier":
+                    if ":isbn:" in text:
+                        tag = "isbn"
+                    elif "www.ester.ee" in text:
+                        tag = "ester_url"
+                    elif "www.digar.ee" in text:
+                        tag = "digar_url"
+                    else:
+                        tag = "other_identifier"
 
-        if tag == "date":
-            record_metadata["year"] = extract_year(text)        
-        if lang is not None:
-            tag = tag + "_" + lang 
-        if tag in record_metadata.keys():
-            record_metadata[tag] += sep + text
-        else:
-            record_metadata[tag] = text
+                if tag == "date":
+                    record_metadata["year"] = extract_year(text)        
+                if lang is not None:
+                    tag = tag + "_" + lang 
+                if tag in record_metadata.keys():
+                    record_metadata[tag] += sep + text
+                else:
+                    record_metadata[tag] = text
 
     return record_metadata
 
