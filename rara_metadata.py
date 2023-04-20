@@ -49,7 +49,7 @@ class Harvester:
         Request records of the collection from the server. Made both for initial and follow-up requests.
         """
         # if we don't have a resumptionToken yet, request the first batch; else use the token.
-        if token == "first request":
+        if token == "first-request":
             URL = self.current_collection_URL
         else:
             URL = f"https://data.digar.ee/repox/OAIHandler?verb=ListRecords&resumptionToken={token}"
@@ -59,7 +59,7 @@ class Harvester:
         root = tree.getroot()
         responseDate, request, ListRecords = root.getchildren()
 
-        if token == "first request":
+        if token == "first-request":
             # in the case of an initial request, return both the records, resumptionToken and the request metadata
             try:
                 resumptionToken = root.find("./{*}ListRecords/{*}resumptionToken").text
@@ -79,7 +79,7 @@ class Harvester:
         """
         Detects the format of a collection from the first batch of records returned.
         """
-        ListRecords = self.request_records(token="first request")
+        ListRecords = self.request_records(token="first-request")
         return detect_record_format(ListRecords[0])
 
 
@@ -89,7 +89,7 @@ class Harvester:
         """
         # initial request
         all_records = []
-        ListRecords = self.request_records(token="first request")
+        ListRecords = self.request_records(token="first-request")
         all_records += ListRecords[:-1]
 
         token = self.metadata["resumptionToken"]
