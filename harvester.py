@@ -11,9 +11,6 @@ ns = {"oai": "http://www.openarchives.org/OAI/2.0/",
 for key, value in ns.items():
     etree.register_namespace(key, value)
 
-with open("collections.json", "r", encoding="utf8") as f:
-    collections = json.load(f)
-            
 
 def update_cursor(token, step):
     """
