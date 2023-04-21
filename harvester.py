@@ -12,9 +12,21 @@ for key, value in ns.items():
     etree.register_namespace(key, value)
 
 
-def update_cursor(token, step):
+def update_cursor(token: str, step: int):
     """
-    Extracts the cursor from the resumptionToken
+    Update a given resumptionToken with the specified step size.
+
+    Parameters:
+    -----------
+    token : str
+        The resumptionToken to update, in the format `token_id:collection:metadata_prefix:cursor:collection_size`
+    step : int
+        The number of records to advance the cursor by.
+
+    Returns:
+    --------
+    str or None
+        The updated resumptionToken, in the same format as the input token, or None if the end of the collection has been reached.
     """
     token_id, collection, metadata_prefix, cursor, collection_size = token.strip(":").split(":")
     new_cursor = str(int(cursor) + step)
@@ -26,7 +38,17 @@ def update_cursor(token, step):
 
 def request_records(collection_URL=None, token=None):
     """
-    Request records of the collection from the server. Made both for initial and follow-up requests.
+    Given an OAI-PMH collection URL or a resumptionToken, sends a request to the endpoint and retrieves the corresponding
+    ListRecords element. If an initial request is made, returns both the records and the resumptionToken, as well as the
+    request metadata.
+
+    Parameters:
+    - collection_URL (str): the OAI-PMH collection URL to query.
+    - token (str): the resumptionToken to use to continue a previous query.
+
+    Returns:
+    - (lxml.etree.ElementTree): the ListRecords element corresponding to the requested records.
+    - (dict): the request metadata, including the responseDate, request, and resumptionToken (if applicable).
     """
     # if we don't have a resumptionToken yet, request the first batch; else use the token.
     if token is not None and collection_URL is None:
@@ -59,7 +81,19 @@ def request_records(collection_URL=None, token=None):
 
 def get_collection(URL):
     """
-    Requests the whole collection in batches using the resumptionToken. Returns all records, as well as the request metadata (header).
+    Requests all records of a given OAI-PMH collection URL, and returns them as a list of xml ElementTree elements,
+    together with the request metadata (e.g. the resumptionToken).
+
+    Args:
+        URL (str): The URL of the OAI-PMH collection.
+
+    Returns:
+        Tuple[List[xml.etree.ElementTree.Element], Dict[str, Any]]: A tuple containing two elements:
+            - A list of xml.etree.ElementTree.Element objects, representing the records in the collection.
+            - A dictionary containing the request metadata (e.g. the resumptionToken).
+
+    Raises:
+        AttributeError: If URL is None.
     """
     # initial request
     all_records = []
@@ -71,7 +105,6 @@ def get_collection(URL):
         cursor_step, collection_size = [int(el) for el in token.split(":")[3:5]]
     else:   # token can be none in the case of a small collection that is returned in the initial request
         cursor_step, collection_size = 1000, len(ListRecords)
-    #print(f"Fetched {len(ListRecords)} records in first batch from collection with size {collection_size}.\nRequesting rest of the collection...")
 
     progress_bar = tqdm(total=collection_size, initial=cursor_step)
     while token is not None: # continue requesting until there is no more resumptionToken, i.e. the end of the collection is reached
@@ -84,9 +117,15 @@ def get_collection(URL):
     return all_records, request_metadata
 
 
-def write_start_of_string(metadata):
+def write_start_of_string(metadata: dict) -> str:
     """
-    Reconstructs the original header of the OAI-PMH request.
+    Generates and returns the beginning of an OAI-PMH XML string based on the metadata dictionary passed as argument.
+
+    Args:
+    - metadata (dict): a dictionary containing the metadata returned by an OAI-PMH repository, including the responseDate and request elements.
+
+    Returns:
+    - str: the XML string representing the start of the OAI-PMH response, including the responseDate and request elements.
     """
     xml_string = """<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">"""
     xml_string += etree.tostring(metadata["responseDate"],
@@ -98,14 +137,17 @@ def write_start_of_string(metadata):
     return xml_string
 
 
-def write_records(ListRecords, metadata, savepath):
+def write_records(ListRecords: list, metadata: dict, savepath: str) -> None:
     """
-    Joins the header and the records into a full XML structure and saves it.
+    Writes OAI-PMH XML records to a file.
+
+    Args:
+    - ListRecords: list of OAI-PMH XML records, as returned by get_collection() function
+    - metadata: dictionary with response metadata, as returned by get_collection() function
+    - savepath: string indicating the file path where the records will be saved
+    
+    Returns: None
     """
-    # if os.path.exists(savepath):
-    #     path, extension = savepath.rsplit(".", 1)
-    #     savepath = path + "_NEW." + extension
-    #     print(f"""The file path already exists. To avoid appending to existing file, data will be saved to:\n '{savepath}'""")
     with open(savepath, "a", encoding="utf8") as f: 
         f.write(write_start_of_string(metadata))
         f.write("<ListRecords>")
@@ -120,17 +162,33 @@ def write_records(ListRecords, metadata, savepath):
         f.write("</OAI-PMH>")
 
 
-def harvest_oai(collection_name, savepath=None):
+def harvest_oai(collection_name: str, savepath: str) -> None:
     """
-    Harvests and saves the complete collection in the original OAI-PMH format
+    Harvests metadata records from an OAI-PMH endpoint for a given collection and writes them to a file.
+
+    Args:
+        collection_name (str): The name of the OAI-PMH collection to harvest.
+        savepath (str): The path to the file where the harvested records will be saved.
+
+    Returns:
+        None.
+
+    Raises:
+        ValueError: If the specified collection name is not found in the `collections` dictionary.
+        Exception: If an error occurs during the harvesting process.
+
+    Example:
+        To harvest metadata records from the "ERB - Estonian books" OAI-PMH collection and save them to a file called "records.xml",
+        you can call the function as follows:
+
+        >>> harvest_oai("ERB - Estonian books", "ERB_estonian_books.xml")
+
     """
     URL = collections[collection_name]
     ListRecords, request_metadata = get_collection(URL=URL)
-    #print("Writing file")
     write_records(ListRecords=ListRecords,
                   metadata=request_metadata,
                   savepath=savepath)
-    #print("Finished")
 
 
 collections = {
