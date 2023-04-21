@@ -45,6 +45,40 @@ class MyContentHandler(XmlHandler):
 
 
 class MARCrecordParser():
+    """
+    A class to parse a MARC record and extract the fields and subfields.
+
+    Args:
+        record (Record): A MARC record.
+
+    Attributes:
+        fields (list): A list of fields in the MARC record.
+        marc_paths (dict): A dictionary of the paths and values of the fields in the MARC record.
+        duplicate_field_sep (str): A separator for duplicate fields.
+        return_control_fields (bool): Whether or not to return control fields.
+
+    Methods:
+        join_subfields_list(subfields_list):
+            Join a list of subfields into a single dictionary.
+
+        clean_person_dates(dates):
+            Clean up the dates in person info (e.g. "(1855-1900)").
+
+        handle_person_subfields(subfields):
+            Combine the subfields of persons (name, dates, role etc.) into one string.
+
+        clean_field(value):
+            Simple preprocessing to remove trailing punctuation, etc.
+
+        append_field(field, value):
+            Append a field and its value to the marc_paths dictionary.
+
+        sort_marc_paths():
+            Sort the marc_paths dictionary.
+
+        parse():
+            Parse the fields in the MARC record and return a dictionary of the paths and values of the fields.
+    """
 
     def __init__(self, record: Record):
         self.fields = record.as_dict()["fields"]
@@ -146,6 +180,23 @@ class MARCrecordParser():
     
 
 class DCrecordParser():
+    """
+    A class to parse Dublin Core metadata from an EDM record.
+
+    Attributes:
+        namespaces (dict): A dictionary containing the XML namespaces used in the EDM record.
+        fields (etree.ElementIterable): An iterator containing the Dublin Core fields in the EDM record.
+        dc_fields (dict): A dictionary containing the parsed Dublin Core fields from the EDM record.
+        sep (str): A string used to join multiple field values.
+
+    Methods:
+        extract_year(date):
+            Extracts a valid year from a datetime string.
+
+        parse():
+            Parses the Dublin Core fields in the EDM record and returns them as a dictionary.
+    """
+
 
     def __init__(self, record: etree._ElementTree):
         self.namespaces = {"xsi": "http://www.w3.org/2001/XMLSchema-instance",
@@ -163,22 +214,18 @@ class DCrecordParser():
         """
         Cleans a datetime string to find a valid year.
         """
-        
         if len(date) == 4 and date.isnumeric():
             if int(date) > 1500 and int(date) < 2024:
                 return int(date)
             else:
                 return None
-
         patterns = [re.compile("(^([\D\s]+)(\d{4})([\D\s]*)$)|(^([\D\s]*)(\d{4})([\D\s]+)$)"),
                     re.compile("^\d{4}-\d{2}-\d{2}$"),
                     re.compile("^\d{2}-\d{2}-\d{4}$"),
                     re.compile("^\d{4}-\d{2}$")]
-
         for pattern in patterns:
             if re.match(pattern, date):
                 date = re.findall("\d{4}", date)[0]
-
         if len(date) == 4:
             try:
                 date = int(date)
@@ -287,6 +334,35 @@ def detect_format(tree):
 
 
 def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
+    """
+    Converts an OAI-PMH file to a pandas DataFrame.
+
+    Parameters:
+    -----------
+    filepath : str
+        The path to the input OAI-PMH file.
+    marc_threshold : float, optional (default=0.1)
+        The threshold value used for filtering out empty columns in the output DataFrame
+        (only used when the input file is in MARCXML format).
+
+    Returns:
+    --------
+    pandas.DataFrame
+        A DataFrame containing the extracted metadata, with columns corresponding to
+        the Dublin Core (DC) elements or MARC fields.
+
+    Raises:
+    -------
+    ValueError
+        If the input file is not in a supported format.
+
+    Examples:
+    ---------
+    >>> df = oai_to_dataframe("my_file.xml")
+    >>> df.head()
+
+    """
+
     f = open(filepath, "r", encoding="utf8")
     tree = etree.parse(f)
     format = detect_format(tree)
@@ -302,7 +378,64 @@ def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
         df = marc_to_dataframe(records=marc_records,
                                columns_dict=marc_columns_dict,
                                threshold=marc_threshold)
-        return df 
+        return df
+    
+
+def oai_to_dict(filepath: str):
+    """
+    Parses an OAI-PMH XML file at `filepath` and returns a dictionary
+    containing the records as either EDM Dublin Core or MARC21XML.
+
+    Args:
+        filepath (str): The path to the OAI-PMH XML file to parse.
+
+    Returns:
+        dict: A dictionary containing the parsed records. The keys of the dictionary
+        are string representations of integers, starting from 0 and increasing by 1
+        for each record. The values of the dictionary are the records themselves,
+        represented as dictionaries.
+
+    Raises:
+        TypeError: If the format of the XML file at `filepath` is not EDM or MARC21XML.
+    """
+    f = open(filepath, "r", encoding="utf8")
+    tree = etree.parse(f)
+    format = detect_format(tree)
+    if format == "edm":
+        xml_records = read_edm_records(tree)
+        f.close()
+        json_records = {"records": {}}
+        for i, record in enumerate(xml_records):
+            json_records["records"][str(i)] = DCrecordParser(record).parse()
+        return json_records
+    elif format == "marc":
+        f.close()
+        marc_records = read_marc_records(filepath)
+        json_records = {"records": {}}
+        for i, record in enumerate(marc_records):
+            json_records["records"][str(i)] = record.as_dict()
+        return json_records                   
+    else:
+        raise TypeError("The filepath provided does not seem to contain EDM Dublin Core or MARC21XML records.")
+
+
+def oai_to_json(filepath: str, json_output_path: str):
+    """
+    Converts an OAI-PMH XML file containing EDM Dublin Core or MARC21XML records to a JSON file.
+
+    Args:
+        filepath (str): The path to the input OAI-PMH XML file.
+        json_output_path (str): The path where the output JSON file will be saved.
+
+    Returns:
+        None
+
+    Raises:
+        TypeError: If the OAI-PMH XML file does not contain EDM Dublin Core or MARC21XML records.
+    """
+    json_records = oai_to_dict(filepath)
+    with open(json_output_path, "w", encoding="utf8") as f:
+        json.dump(json_records, f)
 
 
 marc_columns_dict = {
@@ -508,57 +641,3 @@ marc_columns_dict = {
     "856$u": "electronic_access_URI",
     "866$a": "undefined_rara_field",
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def edm_to_json(source):
-    """Parses the records of an EDM tree and returns the records as dictionary.
-    Input: filepath or lxml.etree._ElementTree object
-    Output: dict"""
-
-    records = get_records(source)
-    records_as_json = {"records": []}
-
-    for record in (extract_edm_metadata(record) for record in records):
-        records_as_json["records"].append(record)
-
-    return records_as_json
-
-
-def edm_to_dataframe(source):
-    """Parses the records of an EDM tree and returns the records as a dataframe.
-    Input: filepath or lxml.etree._ElementTree object
-    Output: pandas.DataFrame"""
-
-    records = get_records(source)
-    records_metadata = (extract_edm_metadata(record) for record in records)
-
-    return pd.DataFrame.from_records(records_metadata).convert_dtypes()
