@@ -2,42 +2,39 @@
 
 ### Installing the package and requirements
 ```
-git clone https://github.com/krkryger/RaRa-metadata-harvester.git
+git clone https://github.com/krkryger/RaRa-metadata.git
 pip install -r requirements.txt
 ```
 
-### Usage
-
-#### Import and initialize the harvester
+### Harvesting metadata from the OAI-PMH endpoint
 ```
-from rara_metadata import Harvester
+from harvester import collections, harvest_oai
 
-harvester = Harvester()
-```
-
-#### See the available datasets and choose one to download
-```
-harvester.collections     # returns a dictionary with names and URLs
-
+# see the available datasets and choose one to download
+print(collections)
 >>> {'Estonian Legal Bibliography': 'https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=bie&metadataPrefix=marc21xml',
      'DIGAR - books collection': 'https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=book&metadataPrefix=edm',
      'DIGAR - maps collection': 'https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=map&metadataPrefix=edm',
      ...
-     
-harvester.set_collection(collection_name="DIGAR - maps collection")     # this is one of the smaller ones
+ 
+harvest_oai(collection_name="DIGAR - books collection",
+            savepath="digar_books.xml")
 ```
 
-#### Harvest the collection metadata
-##### pandas DataFrame
+### Converting downloaded files from XML to DataFrame/dict/JSON
 ```
-records_dataframe = harvester.harvest(format="dataframe")
+from converter import oai_to_dataframe, oai_to_dict, oai_to_json
+
+# convert to DataFrame and save as TSV
+df = oai_to_dataframe(filepath="digar_books.xml")
+df.to_csv("digar_books.tsv", sep="\t", encoding="utf8", index=False)
+
+# convert to dictionary
+records_as_dict = oai_to_dict(filepath="digar_books.xml")
+
+# or save directly as JSON
+oai_to_json(filepath="digar_books.xml",
+            json_output_path="digar_books.json")
 ```
-##### as JSON
-```
-records_as_json = harvester.harvest(format="json")
-```
-##### OAI-PMH (original)
-When harvesting as OAI-PMH, the records are stored directly in a file and a savepath must therefore be provided.
-```
-harvester.harvest(format="oai-pmh", savepath="somefilepath.xml")     # be sure to use the .xml extension
-```
+
+When converting MARC21XML files to a dataframe, the columns that are mostly empty will be dropped automatically. This can be modified with the ```marc_threshold``` parameter in the ```oai_to_dataframe``` function (the default value ````0.1``` means that columns with > 90% NA values are dropped). Coverting to dict or JSON keeps all fields.
