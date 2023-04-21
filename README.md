@@ -1,4 +1,6 @@
-# RaRa metadata harvester
+# RaRa metadata handler
+This is a tool for harvesting the public metadata resources of the **National Library of Estonia** and converting them to formats better suited for data analysis. The data is encoded in either Dublin Core or MARC21XML format, depending on the collection, and provided via an OAI-PMH endpoint. This package allows you to retrieve the collections more easily and convert them to common data formats.
+For more information, see <https://digilab.rara.ee/>
 
 ### Installing the package and requirements
 ```
@@ -37,4 +39,4 @@ oai_to_json(filepath="digar_books.xml",
             json_output_path="digar_books.json")
 ```
 
-When converting MARC21XML files to a dataframe, the columns that are mostly empty will be dropped automatically. This can be modified with the ```marc_threshold``` parameter in the ```oai_to_dataframe``` function (the default value ````0.1``` means that columns with > 90% NA values are dropped). Coverting to dict or JSON keeps all fields.
+When converting MARC21XML files to a dataframe, the columns that are mostly empty will be dropped automatically. This can be modified with the ```marc_threshold``` parameter in the ```oai_to_dataframe``` function (the default value ```0.1``` means that columns with ≥ 90% NA values are dropped). Coverting to dict or JSON keeps all fields.
