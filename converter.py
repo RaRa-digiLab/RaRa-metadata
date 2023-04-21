@@ -537,18 +537,6 @@ marc_columns_dict = {
 
 
 
-def detect_record_format(record):
-    """Detects whether a single record is in OAI-PMH or EDM format"""
-    ns = get_namespaces()
-
-    if record.find("./oai:metadata/marc:*", namespaces=ns) is not None:
-        return "marc"
-    elif record.find("./oai:metadata/rdf:RDF/edm:*", namespaces=ns) is not None:
-        return "edm"
-    else:
-        raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
-
-
 
 
 def edm_to_json(source):
