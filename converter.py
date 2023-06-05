@@ -377,7 +377,7 @@ def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
         marc_records = read_marc_records(filepath)
         df = marc_to_dataframe(records=marc_records,
                                columns_dict=marc_columns_dict,
-                               threshold=marc_threshold)
+                               threshold=marc_threshold).convert_dtypes()
         return df
     
 
