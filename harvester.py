@@ -162,12 +162,12 @@ def write_records(ListRecords: list, metadata: dict, savepath: str) -> None:
         f.write("</OAI-PMH>")
 
 
-def harvest_oai(collection_name: str, savepath: str) -> None:
+def harvest_oai(key: str, savepath: str) -> None:
     """
     Harvests metadata records from an OAI-PMH endpoint for a given collection and writes them to a file.
 
     Args:
-        collection_name (str): The name of the OAI-PMH collection to harvest.
+        collection_key (str): The key of the collection to harvest. See harvester.collections for the available keys, titles and URLs.
         savepath (str): The path to the file where the harvested records will be saved.
 
     Returns:
@@ -184,7 +184,7 @@ def harvest_oai(collection_name: str, savepath: str) -> None:
         >>> harvest_oai("ERB - Estonian books", "ERB_estonian_books.xml")
 
     """
-    URL = collections[collection_name]
+    URL = collections[key]["OAI-PMH"]
     ListRecords, request_metadata = get_collection(URL=URL)
     write_records(ListRecords=ListRecords,
                   metadata=request_metadata,
@@ -192,33 +192,149 @@ def harvest_oai(collection_name: str, savepath: str) -> None:
 
 
 collections = {
-    "Bibliography - Presidents of Estonia": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=vpb&metadataPrefix=marc21xml",
-    "DIGAR - EODOPEN collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=eodopen&metadataPrefix=marc21xml",
-    "DIGAR - books collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=book&metadataPrefix=edm",
-    "DIGAR - journals collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=journal&metadataPrefix=edm",
-    "DIGAR - maps collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=map&metadataPrefix=edm",
-    "DIGAR - postcard collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=postcard&metadataPrefix=edm",
-    "DIGAR - poster collection": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=poster&metadataPrefix=edm",
-    "DIGAR - sample book records": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=sample_book&metadataPrefix=edm",
-    "DIGAR - serials": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=serials&metadataPrefix=edm",
-    "DIGAR - sheet music": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=sheet_music&metadataPrefix=edm",
-    "DIGAR - soundrecordings": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=soundrecording&metadataPrefix=edm",
-    "DIGAR - standards": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=standard&metadataPrefix=edm",
-    "Digital Archive DIGAR": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=digar&metadataPrefix=edm",
-    "ERB - Estonian National Bibliography": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=erb&metadataPrefix=marc21xml",
-    "ERB - Estonian books": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=raamat&metadataPrefix=marc21xml",
-    "ERB - Works in Public Domain": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=vabakasutus&metadataPrefix=marc21xml",
-    "ERB - books in a foreign language": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=muukeelne&metadataPrefix=marc21xml",
-    "ERB - graphic material": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=piltteavikud&metadataPrefix=marc21xml",
-    "ERB - maps": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=kaardid&metadataPrefix=marc21xml",
-    "ERB - multimedia": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=multimeedia&metadataPrefix=marc21xml",
-    "ERB - periodicals": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=perioodika&metadataPrefix=marc21xml",
-    "ERB - sheet music": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=noodid&metadataPrefix=marc21xml",
-    "ERB - sound recordings": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=helisalvestised&metadataPrefix=marc21xml",
-    "ERB - video": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=video&metadataPrefix=marc21xml",
-    "Estonian Legal Bibliography": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=bie&metadataPrefix=marc21xml",
-    "Organization names": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=organization&metadataPrefix=marc21xml",
-    "Parliamentarism": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=parlamentism&metadataPrefix=marc21xml",
-    "Person_names": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=person&metadataPrefix=marc21xml",
-    "Reproductions": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=reprod&metadataPrefix=marc21xml"
+    "erb": {
+        "title": "ERB - Estonian National Bibliography",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=erb&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_books": {
+        "title": "ERB - Estonian books",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=raamat&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_public_domain": {
+        "title": "ERB - works in public domain",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=vabakasutus&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_non_estonian": {
+        "title": "ERB - foreign language books",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=muukeelne&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_graphics": {
+        "title": "ERB - graphic material",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=piltteavikud&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_maps": {
+        "title": "ERB - maps",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=kaardid&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_multimedia": {
+        "title": "ERB - multimedia",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=multimeedia&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_periodicals": {
+        "title": "ERB - periodicals",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=perioodika&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_sheetmusic": {
+        "title": "ERB - sheet music",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=noodid&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_soundrecordings": {
+        "title": "ERB - sound recordings",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=helisalvestised&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "erb_video": {
+        "title": "ERB - video",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=video&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "nle_digar": {
+        "title": "DIGAR - digital archive",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=digar&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_eodopen": {
+        "title": "DIGAR - EODOPEN collection",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=eodopen&metadataPrefix=marc21xml",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_books": {
+        "title": "DIGAR - books",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=book&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_journals": {
+        "title": "DIGAR - journals",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=journal&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_maps": {
+        "title": "DIGAR - maps",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=map&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_postcards": {
+        "title": "DIGAR - postcards",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=postcard&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_posters": {
+        "title": "DIGAR - posters",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=poster&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_samplebooks": {
+        "title": "DIGAR - books sample",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=sample_book&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_serials": {
+        "title": "DIGAR - serials",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=serials&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_sheetmusic": {
+        "title": "DIGAR - sheet music",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=sheet_music&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_soundrecordings": {
+        "title": "DIGAR - sound recordings",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=soundrecording&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_standards": {
+        "title": "DIGAR - standards",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=standard&metadataPrefix=edm",
+        "original_format": "Europeana Data Model"
+    },
+    "nle_persons": {
+        "title": "Person names",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=person&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "nle_organisations": {
+        "title": "Organisation names",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=organization&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "ise_bie": {
+        "title": "Estonian Legal Bibliography",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=bie&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "ise_parliamentarism": {
+        "title": "Parliamentarism",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=parlamentism&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "ise_vpb": {
+        "title": "Bibliography - Presidents of Estonia",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=vpb&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    },
+    "ise_repros": {
+        "title": "Reproductions",
+        "OAI-PMH": "https://data.digar.ee/repox/OAIHandler?verb=ListRecords&set=reprod&metadataPrefix=marc21xml",
+        "original_format": "MARC21XML"
+    }
 }
