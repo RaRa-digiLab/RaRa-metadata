@@ -327,8 +327,13 @@ def detect_format(tree):
     """Detects whether a parsed XML tree is in OAI-PMH or EDM format"""
     ns = get_namespaces()
     if tree.find("./oai:ListRecords/oai:record/oai:metadata/marc:*", namespaces=ns) is not None:
+        print("Detected MARC format in OAI-PMH protocol. Proceeding to convert.")
+        return "marc"
+    elif tree.find("./marc:record", namespaces=ns) is not None:
+        print("Detected MARC format without OAI-PMH protocol. Attempting to convert...")
         return "marc"
     elif tree.find("./oai:ListRecords/oai:record/oai:metadata/rdf:RDF/edm:*", namespaces=ns) is not None:
+        print("Detected EDM format. Proceeding to convert.")
         return "edm"
     else:
         raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
