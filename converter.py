@@ -305,11 +305,12 @@ def read_edm_records(source):
     return records
 
 
-def marc_to_dataframe(records, columns_dict, threshold):
+def marc_to_dataframe(records, columns_dict, threshold, replace_columns):
     df = pd.DataFrame.from_records((MARCrecordParser(record).parse() for record in records))
     column_population = df.notna().sum() / len(df) # how populated the columns are
     df = df[column_population.loc[column_population > threshold].index].copy()
-    df.columns = [columns_dict[col] if col in columns_dict.keys() else col for col in df.columns]
+    if replace_columns:
+        df.columns = [columns_dict[col] if col in columns_dict.keys() else col for col in df.columns]
     return df
 
 
@@ -333,7 +334,7 @@ def detect_format(tree):
         raise ValueError("Cannot determine data format. The OAI-PMH ListRecords response must be made up of either EDM or MARC21XML records.")
 
 
-def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
+def oai_to_dataframe(filepath: str, marc_threshold: float=0.1, replace_columns: bool=True) -> pd.DataFrame:
     """
     Converts an OAI-PMH file to a pandas DataFrame.
 
@@ -344,6 +345,9 @@ def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
     marc_threshold : float, optional (default=0.1)
         The threshold value used for filtering out empty columns in the output DataFrame
         (only used when the input file is in MARCXML format).
+    replace_columns : bool, optional (default=True)
+        In the case of MARC data, whether to replace the MARC field names with more informative ones
+        (these unofficial field names are hand-crafted for about 200 different fields).
 
     Returns:
     --------
@@ -377,7 +381,8 @@ def oai_to_dataframe(filepath: str, marc_threshold: float=0.1) -> pd.DataFrame:
         marc_records = read_marc_records(filepath)
         df = marc_to_dataframe(records=marc_records,
                                columns_dict=marc_columns_dict,
-                               threshold=marc_threshold).convert_dtypes()
+                               threshold=marc_threshold,
+                               replace_columns=replace_columns).convert_dtypes()
         return df
     
 
